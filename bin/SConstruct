@@ -1,0 +1,19 @@
+import os, sys, glob
+
+bin = 'thriftnamed'
+zocle = os.path.join(os.path.dirname(os.path.dirname(os.getcwd())), 'zocle')
+includes = ['../../include', '/usr/local/include', os.path.join(zocle, 'include')]
+sourcedirs = ['.']
+files = []
+for d in sourcedirs:
+	files += glob.glob(d + '/*.c')
+libs = ['m', 'pthread']
+defs = ['_REENTRANT', '_GNU_SOURCE', 'ZOCLE_WITH_LIBEV']
+libpath = ['/usr/local/lib']
+ldflags = ''
+
+env = Environment(CCFLAGS='-ggdb -Wall -std=gnu99', CPPDEFINES=defs, CPPPATH=includes, 
+				  LIBPATH=libpath, LIBS=libs, LINKFLAGS=ldflags)
+env.Program(bin, files + ['/usr/local/lib/libev.a', os.path.join(zocle, 'libzocle.a')])
+
+
