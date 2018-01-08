@@ -26,7 +26,7 @@ int conn_read_head(zcAsynIO *conn, const char *data, int len)
 
 	memcpy(&headlen, data, 4); 
 	headlen = htob32(headlen);
-
+    ZCDEBUG("read body:%d", headlen);
 	zc_asynio_read_bytes(conn, headlen, conn_read_body);
 
 	return ZC_OK;
@@ -38,6 +38,7 @@ int conn_connected(zcAsynIO *conn)
 	ZCINFO("connected!");
 	zc_socket_linger(conn->sock, 1, 0); 
 	zc_asynio_read_bytes(conn, 4, conn_read_head);
+    ZCDEBUG("_read_bytes:%d %p", conn->_read_bytes, conn);
 
 	return ZC_OK;
 }
@@ -65,7 +66,8 @@ int main(int argc, char * argv[])
 	p.handle_connected = conn_connected;
 
 	ZCNOTICE("thriftnamed start at %s:%d\n", g_conf->addr.ip, g_conf->addr.port);
-	zcAsynIO *server = zc_asynio_new_tcp_server(g_conf->addr.ip, g_conf->addr.port, g_conf->timeout, NULL, loop, 32768, 32768);
+	zcAsynIO *server = zc_asynio_new_tcp_server(g_conf->addr.ip, g_conf->addr.port, 
+                g_conf->timeout, &p, loop, 32768, 32768);
 	if (NULL == server) {
 		ZCERROR("server create error!");
 		return -1;
