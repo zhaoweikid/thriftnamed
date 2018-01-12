@@ -1,6 +1,6 @@
 #include <zocle/zocle.h>
 #include "config.h"
-#include "endian_swap.h"
+#include "network.h"
 
 int conn_read_body(zcAsynIO *conn, const char *data, int len)
 {
@@ -11,16 +11,17 @@ int conn_read_body(zcAsynIO *conn, const char *data, int len)
 
 	ZCDEBUG("data: %s\n", tmp);
 
-    memcpy(&namelen, data+4, 4); 
-    namelen = htob32(namelen);
+    /*memcpy(&namelen, data+4, 4); 
     ZCDEBUG("namelen:%d", namelen);
-
-    char name[256] = {0};
+    namelen = zc_htob32(namelen);
+    ZCDEBUG("namelen:%d", namelen);
+	*/
     //strncpy(name, data+8, namelen);
     //ZCDEBUG("name:%s", name);
 
 	int i;
 
+    char name[256] = {0};
 	char type = 0;
 	int  seqid = 0;
 	short id = 0;
@@ -65,6 +66,13 @@ int conn_read_body(zcAsynIO *conn, const char *data, int len)
 			break;
 		}
 	}
+	
+	zc_buffer_compact(conn->wbuf);
+	ping_pack_resp(conn->wbuf, name, seqid);
+
+	zc_format_hex(tmp, zc_buffer_data(conn->wbuf), zc_buffer_used(conn->wbuf));
+
+	ZCDEBUG("reply data: %s\n", tmp);
 
 
     return ZC_OK;
@@ -76,7 +84,7 @@ int conn_read_head(zcAsynIO *conn, const char *data, int len)
 	int headlen = 0;
 
 	memcpy(&headlen, data, 4); 
-	headlen = htob32(headlen);
+	headlen = zc_htob32(headlen);
     ZCDEBUG("read body:%d", headlen);
 	zc_asynio_read_bytes(conn, headlen, conn_read_body);
 
