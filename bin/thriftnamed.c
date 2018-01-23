@@ -2,80 +2,74 @@
 #include "config.h"
 #include "network.h"
 
+int conn_read_head(zcAsynIO *conn, const char *data, int len);
+
 int conn_read_body(zcAsynIO *conn, const char *data, int len)
 {
-    int namelen = 0;
-	char tmp[len*5];
+	char tmp[len*10];
 
 	zc_format_hex(tmp, data, len);
 
-	ZCDEBUG("data: %s\n", tmp);
-
-    /*memcpy(&namelen, data+4, 4); 
-    ZCDEBUG("namelen:%d", namelen);
-    namelen = zc_htob32(namelen);
-    ZCDEBUG("namelen:%d", namelen);
-	*/
-    //strncpy(name, data+8, namelen);
-    //ZCDEBUG("name:%s", name);
+	ZCDEBUG("======== data: [%d] %s\n", len, tmp);
 
 	int i;
 
     char name[256] = {0};
 	char type = 0;
 	int  seqid = 0;
-	short id = 0;
-	char  v1;
-	short v2;
-	int   v3;
-	long long v4;
-	double vd;
-	char   vs[1024];
-
+	
 	i = zc_thrift_read_msg_begin(data, name, &type, &seqid);
 	ZCDEBUG("name:%s type:%d seqid:%d", name, type, seqid);
-	while (1) {
-		i = zc_thrift_read_field_begin(&data[i], NULL, &type, &id);
-		ZCDEBUG("type:%d, id:%d, i:%d", type, id, i);
-		if (type == ZC_THRIFT_STOP)
-			break;
-
-		switch(type) {
-		case ZC_THRIFT_BOOL:
-			i = zc_thrift_read_bool(&data[i], &v1);
-			break;
-		case ZC_THRIFT_BYTE:
-			i = zc_thrift_read_byte(&data[i], &v1);
-			break;
-		case ZC_THRIFT_I16:
-			i = zc_thrift_read_i16(&data[i], &v2);
-			break;
-		case ZC_THRIFT_I32:
-			i = zc_thrift_read_i32(&data[i], &v3);
-			break;
-		case ZC_THRIFT_I64:
-			i = zc_thrift_read_i64(&data[i], &v4);
-			break;
-		case ZC_THRIFT_DOUBLE:
-			i = zc_thrift_read_double(&data[i], &vd);
-			break;
-		case ZC_THRIFT_STRING:
-			i = zc_thrift_read_binary(&data[i], vs, &v3);
-			break;
-		default:
-			break;
-		}
-	}
 	
 	zc_buffer_compact(conn->wbuf);
-	ping_pack_resp(conn->wbuf, name, seqid);
+
+	if (strcmp(name, "ping") == 0) {
+		ping_resp_pack(conn->wbuf, seqid);
+	}else if (strcmp(name, "query") == 0) {
+		char service_name[256] = {0};
+		query_req_unpack(&data[i], len-i, service_name);
+		ZCDEBUG("service name:%s", service_name);
+	
+		NameInfo *nameinfo = zc_malloct(NameInfo);
+		strcpy(nameinfo->name, service_name);
+		nameinfo->services = zc_list_new();
+		
+		Service *s1 = zc_malloct(Service);
+		strcpy(s1->ip, "127.0.0.1");
+		s1->port = 10001;
+		s1->timeout = 1000;
+		zc_list_append(nameinfo->services, s1);
+
+		Service *s2 = zc_malloct(Service);
+		strcpy(s2->ip, "127.0.0.2");
+		s2->port = 10002;
+		s2->timeout = 1000;
+		zc_list_append(nameinfo->services, s2);
+
+		Service *s3 = zc_malloct(Service);
+		strcpy(s3->ip, "127.0.0.3");
+		s3->port = 10003;
+		s3->timeout = 1000;
+		zc_list_append(nameinfo->services, s3);
+
+		ZCDEBUG("pack resp");
+		query_resp_pack(conn->wbuf, nameinfo, seqid);
+	}else if (strcmp(name, "report") == 0) {
+		zc_thrift_write_exception(conn->wbuf, "not found function name", ZC_THRIFT_ERR_WRONG_MSG_NAME, name, seqid, true);
+	}else if (strcmp(name, "sync") == 0) {
+		zc_thrift_write_exception(conn->wbuf, "not found function name", ZC_THRIFT_ERR_WRONG_MSG_NAME, name, seqid, true);
+	}else{
+		zc_thrift_write_exception(conn->wbuf, "not found function name", ZC_THRIFT_ERR_WRONG_MSG_NAME, name, seqid, true);
+	}
+	
 
 	zc_format_hex(tmp, zc_buffer_data(conn->wbuf), zc_buffer_used(conn->wbuf));
+	ZCDEBUG("reply data: [%d] %s\n", zc_buffer_used(conn->wbuf), tmp);
+	ZCDEBUG("------------------------------------");
 
-	ZCDEBUG("reply data: %s\n", tmp);
+	zc_asynio_read_bytes(conn, 4, conn_read_head);
 
-
-    return ZC_OK;
+    return len;
 }
 
 
@@ -97,7 +91,7 @@ int conn_connected(zcAsynIO *conn)
 	ZCINFO("connected!");
 	zc_socket_linger(conn->sock, 1, 0); 
 	zc_asynio_read_bytes(conn, 4, conn_read_head);
-    ZCDEBUG("_read_bytes:%d %p", conn->_read_bytes, conn);
+    //ZCDEBUG("_read_bytes:%d %p", conn->_read_bytes, conn);
 
 	return ZC_OK;
 }
