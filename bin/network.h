@@ -11,7 +11,7 @@ typedef struct service_t
 	int			timeout;
 }Service;
 
-typedef struct service_info_t
+typedef struct name_info_t
 {
 	char	name[256];
 	zcList	*services;

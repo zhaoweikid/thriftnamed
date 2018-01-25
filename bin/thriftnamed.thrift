@@ -16,4 +16,6 @@ service Named {
 	NameInfo query(1:string name),
 	i32 report(1:string name, 2:i32 timestamp, 3:i64 n),
 	i32 sync(1:string auth, 2:string ip, 3:string name, 4:i32 timestamp, 5:i64 n),
+	list<string> names();
+	list<NameInfo> mquery(1:string name);
 }

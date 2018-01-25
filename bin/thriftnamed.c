@@ -1,6 +1,9 @@
 #include <zocle/zocle.h>
 #include "config.h"
 #include "network.h"
+#include "server.h"
+
+struct ev_loop *g_loop;
 
 int conn_read_head(zcAsynIO *conn, const char *data, int len);
 
@@ -112,7 +115,7 @@ int main(int argc, char * argv[])
 
     zc_log_new(g_conf->logfile, g_conf->loglevel);
 
-	struct ev_loop *loop = ev_default_loop (0);	
+	g_loop = ev_default_loop (0);	
 
 	zcProtocol p;
 	zc_protocol_init(&p);
@@ -120,13 +123,15 @@ int main(int argc, char * argv[])
 
 	ZCNOTICE("thriftnamed start at %s:%d\n", g_conf->addr.ip, g_conf->addr.port);
 	zcAsynIO *server = zc_asynio_new_tcp_server(g_conf->addr.ip, g_conf->addr.port, 
-                g_conf->timeout, &p, loop, 32768, 32768);
+                g_conf->timeout, &p, g_loop, 32768, 32768);
 	if (NULL == server) {
 		ZCERROR("server create error!");
 		return -1;
 	}
 
-	ev_run (loop, 0); 
+    cluster_create();
+
+	ev_run (g_loop, 0); 
 	ZCINFO("stopped");
 
     return 0;
