@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <zocle/zocle.h>
 
 typedef struct service_t
 {

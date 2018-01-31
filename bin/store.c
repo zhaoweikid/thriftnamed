@@ -1,4 +1,6 @@
 #include "store.h"
+#include "config.h"
+#include <dirent.h>
 
 Store   *g_store;
 
@@ -9,7 +11,7 @@ store_load()
     g_store->data = zc_dict_new(100000);
 
     char datapath[256] = {0}; 
-    snprintf(datapth, sizeof(datapath), "%s/data", g_conf->homedir);
+    snprintf(datapath, sizeof(datapath), "%s/data", g_conf->homedir);
 
 
 	DIR *d; 
@@ -44,7 +46,7 @@ store_load()
 
 				while (fgets(line, 1000, f) != NULL) {
 					// name,ip,port,timeout,weight,load	
-
+                    
 						
 				}
 
