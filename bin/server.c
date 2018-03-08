@@ -5,7 +5,8 @@ Cluster *g_cluster;
 
 int server_connected(zcAsynIO *conn)
 {
-    ZCINFO("server connected!");
+	zcSockAddr *addr = &(conn->sock->remote);
+    ZCINFO("connect to %s:%d ok", addr->ip, addr->port);
     //zc_socket_linger(conn->sock, 1, 0); 
     //zc_asynio_read_bytes(conn, 4, conn_read_head);
     //ZCDEBUG("_read_bytes:%d %p", conn->_read_bytes, conn);
