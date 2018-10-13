@@ -114,7 +114,8 @@ int report_resp_pack(zcBuffer *data, int ret, int seqid)
 
 int sync_req_pack(zcBuffer *data, char *auth, char *ip, char *name, int timestamp, int n)
 {
-	srandomdev();
+	//srandomdev();
+	srandom((unsigned int)time(NULL));
 	int seqid = random() % 2000000000;
 
 	zc_thrift_write_framed_head(data);
