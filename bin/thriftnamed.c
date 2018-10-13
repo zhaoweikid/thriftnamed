@@ -2,6 +2,7 @@
 #include "config.h"
 #include "network.h"
 #include "server.h"
+#include "store.h"
 
 struct ev_loop *g_loop;
 
@@ -9,11 +10,9 @@ int conn_read_head(zcAsynIO *conn, const char *data, int len);
 
 int conn_read_body(zcAsynIO *conn, const char *data, int len)
 {
-	char tmp[len*10];
+	char tmp[1000];
 
 	zc_format_hex(tmp, data, len);
-
-	ZCDEBUG("======== data: [%d] %s\n", len, tmp);
 
 	int i;
 
@@ -58,15 +57,27 @@ int conn_read_body(zcAsynIO *conn, const char *data, int len)
 		ZCDEBUG("pack resp");
 		query_resp_pack(conn->wbuf, nameinfo, seqid);
 	}else if (strcmp(name, "report") == 0) {
-		zc_thrift_write_exception(conn->wbuf, "not found function name", ZC_THRIFT_ERR_WRONG_MSG_NAME, name, seqid, true);
+		//zc_thrift_write_exception(conn->wbuf, "not found function name", ZC_THRIFT_ERR_WRONG_MSG_NAME, name, seqid, true);
+	
+		char service_name[256] = {0};
+		int timestamp;
+		int16_t action;
+		int n;
+		report_req_unpack(&data[i], len-i, service_name, &timestamp, &n, &action);
+
+		ZCDEBUG("name:%s timestamp:%d n:%d action:%d", service_name, timestamp, n, action);
+
 	}else if (strcmp(name, "sync") == 0) {
 		zc_thrift_write_exception(conn->wbuf, "not found function name", ZC_THRIFT_ERR_WRONG_MSG_NAME, name, seqid, true);
+	}else if (strcmp(name, "get") == 0) {
+		zc_thrift_write_exception(conn->wbuf, "not found function name", ZC_THRIFT_ERR_WRONG_MSG_NAME, name, seqid, true);
 	}else{
+
 		zc_thrift_write_exception(conn->wbuf, "not found function name", ZC_THRIFT_ERR_WRONG_MSG_NAME, name, seqid, true);
 	}
 	
-
 	zc_format_hex(tmp, zc_buffer_data(conn->wbuf), zc_buffer_used(conn->wbuf));
+
 	ZCDEBUG("reply data: [%d] %s\n", zc_buffer_used(conn->wbuf), tmp);
 	ZCDEBUG("------------------------------------");
 

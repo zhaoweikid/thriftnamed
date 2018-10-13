@@ -4,15 +4,6 @@
 #include <stdint.h>
 #include <zocle/zocle.h>
 
-typedef struct service_t
-{
-    char    ip[16];
-    int16_t port;
-    int32_t timeout;
-    int32_t weight;
-    int32_t load;
-}Service;
-
 typedef struct store_t
 {
     zcDict  *data;

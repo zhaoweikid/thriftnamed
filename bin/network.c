@@ -67,7 +67,7 @@ int query_resp_pack(zcBuffer *data, NameInfo *info, int seqid)
 }
 
 
-int report_req_unpack(const char *data, int len, char *name, int *timestamp, int *n)
+int report_req_unpack(const char *data, int len, char *name, int *timestamp, int *n, int16_t *action)
 {
 	int		i = 0;
 	char	type = 0;
@@ -92,6 +92,8 @@ int report_req_unpack(const char *data, int len, char *name, int *timestamp, int
 		return ZC_ERR;
 	}
 	i = zc_thrift_read_i32(data+i, n);
+	
+	i = zc_thrift_read_i16(data+i, action);
 
 	return ZC_OK;
 }
@@ -112,9 +114,10 @@ int report_resp_pack(zcBuffer *data, int ret, int seqid)
 }
 
 
-int sync_req_pack(zcBuffer *data, char *auth, char *ip, char *name, int timestamp, int n)
+int sync_req_pack(zcBuffer *data, char *auth, char *ip, char *name, int timestamp, int n, int16_t action)
 {
-	srandomdev();
+	//srandomdev();
+	srandom(time(NULL));
 	int seqid = random() % 2000000000;
 
 	zc_thrift_write_framed_head(data);
@@ -135,6 +138,9 @@ int sync_req_pack(zcBuffer *data, char *auth, char *ip, char *name, int timestam
 	zc_thrift_write_field_begin(data, "n", ZC_THRIFT_I32, 5);
 	zc_thrift_write_i32(data, n);
 
+	zc_thrift_write_field_begin(data, "action", ZC_THRIFT_I16, 6);
+	zc_thrift_write_i16(data, action);
+
 	zc_thrift_write_msg_end(data);
 	zc_thrift_write_framed(data);
 
@@ -142,7 +148,7 @@ int sync_req_pack(zcBuffer *data, char *auth, char *ip, char *name, int timestam
 }
 
 
-int sync_req_unpack(const char *data, int len, char *auth, char *ip, char *name, int *timestamp, int *n)
+int sync_req_unpack(const char *data, int len, char *auth, char *ip, char *name, int *timestamp, int *n, int16_t *action)
 {
 	int i;
 	int16_t id;
@@ -181,6 +187,12 @@ int sync_req_unpack(const char *data, int len, char *auth, char *ip, char *name,
 		return ZC_ERR;
 	}
 	i += zc_thrift_read_i32(&data[i], n);
+
+	i += zc_thrift_read_field_begin(&data[i], NULL, &type, &id);
+	if (type != ZC_THRIFT_I16) {
+		return ZC_ERR;
+	}
+	i += zc_thrift_read_i16(&data[i], action);
 
 	i += zc_thrift_read_field_begin(&data[i], NULL, &type, &id);
 	if (type != ZC_THRIFT_STOP) {
