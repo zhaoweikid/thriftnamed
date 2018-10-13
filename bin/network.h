@@ -17,20 +17,23 @@ typedef struct name_info_t
 	zcList	*services;
 }NameInfo;
 
+#define ACTION_UPDATE	1
+#define ACTION_DEL		2
+
 int ping_resp_pack(zcBuffer *data, int seqid);
 
 int query_req_unpack(const char *data, int len, char *name);
 
 int query_resp_pack(zcBuffer *data, NameInfo *info, int seqid);
 
-int report_req_unpack(const char *data, int len, char *name, int *timestamp, int *n);
+int report_req_unpack(const char *data, int len, char *name, int *timestamp, int *n, int16_t *action);
 
 int report_resp_pack(zcBuffer *data, int ret, int seqid);
 
 
-int sync_req_pack(zcBuffer *data, char *auth, char *ip, char *name, int timestamp, int n);
+int sync_req_pack(zcBuffer *data, char *auth, char *ip, char *name, int timestamp, int n, short action);
 
-int sync_req_unpack(const char *data, int len, char *auth, char *ip, char *name, int *timestamp, int *n);
+int sync_req_unpack(const char *data, int len, char *auth, char *ip, char *name, int *timestamp, int *n, short *action);
 
 int sync_resp_pack(zcBuffer *data, int ret, int seqid);
 
