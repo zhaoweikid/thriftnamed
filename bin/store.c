@@ -10,15 +10,15 @@ store_load()
     g_store = zc_malloct(Store);
     g_store->data = zc_dict_new(100000);
 
-    char datapath[256] = {0}; 
+    char datapath[512] = {0}; 
     snprintf(datapath, sizeof(datapath), "%s/data", g_conf->homedir);
 
 
 	DIR *d; 
     struct dirent *file;
     struct stat sb;    
-    char    filename[256];
-	char 	path[256] = {0};
+    char    filename[512];
+	char 	path[512] = {0};
 	char i;
 	FILE	*f;
 	char	line[1024];

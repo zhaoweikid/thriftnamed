@@ -14,11 +14,11 @@ typedef struct config_t
 	Addr	addr;
     int     timeout;
     char    homedir[256];
-    char    logfile[256];
+    char    logfile[512];
     int     loglevel;
     int8_t  daemon;
     int8_t  data_flush_mode;
-    char    datafile[256];
+    char    datafile[512];
 	int		server_num;
 	Addr	servers[16];
 }Config;
