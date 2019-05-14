@@ -5,3 +5,6 @@
 *.so
 .sconsign*
 thriftnamed
+__pycache__
+log
+zbase3
