@@ -15,8 +15,7 @@ DEBUG = True
 
 # 日志文件配置
 if DEBUG:
-    #LOGFILE = 'stdout'
-    LOGFILE = os.path.join(HOME, 'log/%s' % os.path.basename(HOME))
+    LOGFILE = 'stdout'
 else:
     LOGFILE = os.path.join(HOME, 'log/%s' % os.path.basename(HOME))
 

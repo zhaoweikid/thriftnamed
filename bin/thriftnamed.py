@@ -11,7 +11,6 @@ import datetime
 import uuid
 from zbase3.base import logger
 from zbase3.server import rpc
-from zbase3.web.session import json_default_trans
 import gevent
 import backsync, backdata
 
@@ -77,7 +76,7 @@ class NameHandler:
 
         newobj.append(row)
         
-        data = json.dumps(newobj, separators=(',', ':'), default=json_default_trans)
+        data = json.dumps(newobj)
         db.put(key, data)
  
 
