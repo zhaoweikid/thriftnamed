@@ -24,6 +24,12 @@ class Backend (object):
     def set(self, key):
         pass
 
+    def getall(self):
+        pass
+
+    def remove(self, key):
+        pass
+
 
 import plyvel
 
@@ -40,6 +46,15 @@ class BackendLevelDB (Backend):
 
     def set(self, key, value):
         return self.db.put(key, value)
+
+    def getall(self):
+        ret = []
+        for key,val in self.db:
+            ret.append([key, val])
+        return ret
+
+    def remove(self, key):
+        return self.db.delete(key)
 
 backends['leveldb'] = BackendLevelDB
 
@@ -64,6 +79,12 @@ try:
         def set(self, key, value):
             path = '/named/' + '/'.join(key.split('.'))
             return self.db.write(path, value)
+
+        def getall(self):
+            pass
+
+        def remove(self):
+            pass
 
     backends['etcd'] = BackendEtcd
 

@@ -17,13 +17,13 @@ DEBUG = True
 if DEBUG:
     LOGFILE = 'stdout'
 else:
-    LOGFILE = os.path.join(HOME, 'log/%s' % os.path.basename(HOME))
+    LOGFILE = os.path.join(HOME, 'log/%s.d1.log' % (os.path.basename(HOME)))
 
 # 数据目录
-DATA_DIR = os.path.join(HOME, 'data')
+DATA_DIR = os.path.join(HOME, 'data1')
 
 # 数据过期时间(s)
-EXPIRE = 300
+EXPIRE = 10
 
 # 服务名称，在一组服务中名字必须唯一
 SERVER_NAME = 'name01'
