@@ -9,6 +9,7 @@ import logging
 log = logging.getLogger()
 
 backends = {}
+db = None
 
 class Backend (object):
     def __init__(self, path='', expire=300):
@@ -36,7 +37,17 @@ import plyvel
 class BackendLevelDB (Backend):
     def __init__(self, path='', expire=300):
         Backend.__init__(self, path, expire)
+        self.nodata = False
         self.db = plyvel.DB(self.path, create_if_missing=True)
+        self._check()
+
+    def _check(self):
+        key = None
+        for k,v in self.db:
+            key = k
+            break
+        if not key:
+            self.nodata = True
 
     def close(self):
         self.db.close()
@@ -45,6 +56,7 @@ class BackendLevelDB (Backend):
         return self.db.get(key)
 
     def set(self, key, value):
+        self.nodata = True
         return self.db.put(key, value)
 
     def getall(self):
@@ -93,6 +105,7 @@ except:
     log.warn('not found etcd')
 
 def create(name='leveldb'):
-    global backends
-    return backends[name](config.DATA_DIR)
+    global backends, db
+    db = backends[name](config.DATA_DIR)
+    return db
 

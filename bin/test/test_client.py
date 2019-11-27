@@ -56,6 +56,7 @@ class TestQuery (BaseTest):
         
         now = int(time.time())
         self.c1.report(name=name, server={'addr':addr1,'timeout':1000}, weight=1, rtime=now)
+        time.sleep(0.5)
 
         for c in [self.c1, self.c2, self.c3]:
             print('server:', c._server)
@@ -66,11 +67,11 @@ class TestQuery (BaseTest):
             addr = data[name][0]['server']['addr']
             assert addr[0] == addr1[0] and addr[1] == addr1[1]
 
-            time.sleep(0.5)
 
         now = int(time.time())
         self.c1.report(name=name, server={'addr':addr2,'timeout':1000}, weight=1, rtime=now)
         self.c1.report(name=name, server={'addr':addr3,'timeout':1000}, weight=1, rtime=now)
+        time.sleep(0.5)
 
         for c in [self.c1, self.c2, self.c3]:
             print('server:', c._server)
@@ -80,7 +81,6 @@ class TestQuery (BaseTest):
             assert ret == OK
             assert len(data[name]) == 3
 
-            time.sleep(0.5)
 
 
     def test_3(self):
@@ -119,6 +119,7 @@ class TestReport (BaseTest):
         self.c1.remove(name=name, addr=None)
 
         self.c1.report(name=name, server={'addr':addr1,'timeout':1000}, weight=1, rtime=now)
+        time.sleep(0.5)
 
         for c in [self.c1, self.c2, self.c3]:
             print('server:', c._server)
@@ -129,7 +130,26 @@ class TestReport (BaseTest):
             addr = data[name][0]['server']['addr']
             assert addr[0] == addr1[0] and addr[1] == addr1[1]
 
-            time.sleep(0.5)
+
+class TestSync (BaseTest):
+    def test_1(self):
+        '''未认证不能访问其他接口'''
+        ret,data = self.c1.sync(token='xxxxx', method="report", 
+            data={"server":{"addr":(), "timeout":1000}, "weight":1}, ctime=int(time.time()))
+        print(ret)
+        assert ret != OK
+
+    def test_2(self):
+        '''token错误不能auth成功，就不能访问其他接口'''
+        ret,data = self.c1.auth(key='11111111111111111111111111111111')
+        print(ret)
+        assert ret != OK
+
+        ret,data = self.c1.sync(token='xxxxx', method="report", 
+            data={"server":{"addr":(), "timeout":1000}, "weight":1}, ctime=int(time.time()))
+        print(ret)
+        assert ret != OK
+
 
         
 def main():

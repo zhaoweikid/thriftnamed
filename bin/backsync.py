@@ -11,6 +11,7 @@ import datetime
 import gevent
 import logging
 import config
+import backdata
 
 log = logging.getLogger()
 
@@ -36,117 +37,6 @@ class AESCrypt():
         plain_text = cryptor.decrypt(base64.b64decode(text))
         return plain_text.rstrip(b'\0').decode('utf-8')
 
-'''
-class SyncServer:
-    def __init__(self):
-        # 已经建立连接的server信息
-        self.servers = {}
-        # 需要连接的server数量
-        self.server_count = 0
-        self.ac = AESCrypt(config.AUTH_KEY)
-
-        self.connect_all()
-
-    def connect_all(self):
-        for x in config.GROUP_SERVER:
-            if x['name'] == config.SERVER_NAME: # skip
-                continue
-            self.server_count += 1
-            try:
-                self.connect(x['name'], x['addr'])
-            except:
-                log.warn('connect %s %s error' % (x['name'], x['addr']))
-                log.warn(traceback.format_exc())
-
-
-    def connect(self, name, addr):
-        authstr = self.ac.enc('%s|%s' % (config.GROUP_NAME, config.SERVER_NAME)).decode('utf-8')
-        
-        c = RPCClient({'addr':addr, 'timeout':1000})
-        ret, token = c.auth(key=authstr)
-    
-        self.servers[name] = {'addr':addr, 'client':c, 'token':token}
-        return c
-
-
-    def check_server(self):
-        delnames = []
-        for x in config.GROUP_SERVER:
-            name = x['name']
-            # 忽略自己
-            if name == config.SERVER_NAME:
-                continue
-            # 已连接上的，调用ping
-            if name in self.servers:
-                try:
-                    self.servers[name]['client'].ping(data='ping')
-                except:
-                    delnames.append(name)
-                    log.warn(traceback.format_exc())
-                continue
-            # 还未连接的，连接上之后ping
-            try:
-                c = self.connect(name, x['addr'])
-                c.ping(data='ping')
-            except Exception as e:
-                log.warn('connect %s %s error: %s' % (name, x['addr'], str(e)))
-                log.warn(traceback.format_exc())
-
-        # 出了异常的关闭掉，下次重连
-        for nm in delnames:
-            log.info('close %s', nm)
-            self.servers[nm]['client']._close()
-            self.servers.pop(nm)
-
-    def sendall(self, msg):
-        dels = []
-        
-        if len(self.servers) != self.server_count:
-            self.check_server()
-
-        for name,serv in self.servers.items():
-            try:
-                log.debug('send %s to %s', msg, serv['addr'])
-                msg['token'] = serv['token']
-                serv['client'].sync(**msg)
-            except:
-                dels.append(name)
-                log.warn(traceback.format_exc())
-
-        for nm in dels:
-            log.info('close %s', nm)
-            self.servers[nm]['client']._close()
-            self.servers.pop(nm)
-                
-    def run(self):
-        global q
-        while True:
-            log.info('sync queue len:%d', q.qsize())
-            now = int(time.time())
-            try:
-                try:
-                    msg = q.get(True, 10)
-                except queue.Empty: 
-                    self.check_server()
-                    continue
-
-                if now - msg['ctime'] > 30:
-                    log.debug('msg too old, skip %s', msg)
-                    continue
-
-                self.sendall(msg)
-            except KeyboardInterrupt:
-                raise
-            except:
-                log.warn(traceback.format_exc())
-
-def sync_servers_old():
-    log.info('group sync on')
-    syncer = SyncServer()
-    syncer.run()
-'''
-
-
 class SyncOneServer:
     def __init__(self, conf):
         # 已经建立连接的server信息
@@ -161,6 +51,16 @@ class SyncOneServer:
         if not self.addr:
             raise ValueError('server name %s error' % name)
 
+    def close(self):
+        if self.c:
+            self.c._close()
+            self.c = None
+
+    def is_connected(self):
+        if self.c:
+            return True
+        return False
+
     def push(self, msg):
         msg['ctime'] = int(time.time())
         log.debug('push %s %s', self.name, msg)
@@ -171,6 +71,10 @@ class SyncOneServer:
         ret, token = self.c.auth(key=self.authstr)
         if ret == OK:
             self.token = token
+            return True
+        else:
+            self.close()
+            return False
 
     def check_server(self):
         try:
@@ -178,8 +82,7 @@ class SyncOneServer:
                 self.connect()
             self.c.ping(data='ping')
         except:
-            self.c._close()
-            self.c = None
+            self.close()
             log.warn(traceback.format_exc())
 
     def send(self, msg):
@@ -216,6 +119,7 @@ class SyncOneServer:
             except KeyboardInterrupt:
                 raise
             except:
+                self.close()
                 gevent.sleep(1)
                 log.warn(traceback.format_exc())
 
@@ -241,6 +145,4 @@ def sync_servers():
         servers[one['name']] = s
         gevent.spawn(run_sync, s)
     
-
-
 

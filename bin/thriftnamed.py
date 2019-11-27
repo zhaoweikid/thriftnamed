@@ -24,10 +24,12 @@ import backsync, backdata
 
 log = logger.install(config.LOGFILE)
 
+ERR_NOT_READY = -1000
+errmsg[ERR_NOT_READY] = 'server not ready, please try later'
         
 # key: token, value: name,ip
 tokens = {}
-db = backdata.create()
+backdata.create()
 
 
 def check_token(func):
@@ -46,31 +48,13 @@ def check_token(func):
     return _
 
 
-class NameHandler:
-    def __init__(self, addr):
-        self.addr = addr
-
-    def ping(self, data=''):
-        now = datetime.datetime.now()
-        return 0, {'name':config.SERVER_NAME, 'group':config.GROUP_NAME, 'time':str(now)[:19]}
-
-    def query(self, name):
-        retdata = {}
-        if isinstance(name, list):
-            for nm in name:
-                retdata[nm] = self._get(nm)
-        else:
-            retdata[name] = self._get(name)
-        return OK, retdata
-
+class DBAction:
     def _get(self, key):
         # name, addr, weight, ctime
-        global db
-
         if isinstance(key, str):
             key = key.encode('utf-8')
 
-        ret = db.get(key)
+        ret = backdata.db.get(key)
         log.debug('get %s %s', key, ret)
         if not ret:
             return None
@@ -91,13 +75,12 @@ class NameHandler:
     def _set(self, key, value):
         # name, addr, weight, ctime
         log.debug('set key:%s value:%s', key, value)
-        global db
 
         if isinstance(key, str):
             key = key.encode('utf-8')
         
         obj = []
-        ret = db.get(key)
+        ret = backdata.db.get(key)
         if ret:
             obj = json.loads(ret)
         log.debug('db:%s', obj)
@@ -124,30 +107,23 @@ class NameHandler:
         
         data = json.dumps(newobj)
         log.debug('db set %s %s', key, data.encode('utf-8'))
-        db.set(key, data.encode('utf-8'))
+        backdata.db.set(key, data.encode('utf-8'))
+
+    def _set_data(self, data):
+        for key,value in data:
+            backdata.db.set(key, value)
  
-
-    def report(self, name, server, weight, rtime):
-        now = int(time.time())
-
-        row = {'server':server, 'weight':weight, 'ctime':now, 'rtime':rtime}
-        self._set(name, row)
-        row['name'] = name
-        backsync.push({'method':'report', 'data':row})
-        return OK, {name:row}
-
     def _delete(self, name, addr):
         # name, addr
-        global db
 
         if isinstance(name, str):
             name = name.encode('utf-8')
 
         if not addr:
-            db.remove(name)
+            backdata.db.remove(name)
             return OK, {'name':name}
     
-        ret = db.get(name)
+        ret = backdata.db.get(name)
         if not ret:
             return OK, {'name':name}
 
@@ -161,16 +137,44 @@ class NameHandler:
                 newobj.append(row)
    
         if not newobj:
-            db.remove(name)
+            backdata.db.remove(name)
             return OK, {'name':name}
         
         if len(newobj) != len(obj):
             data = json.dumps(newobj)
             log.debug('db set %s %s', key, data.encode('utf-8'))
-            db.set(name, data.encode('utf-8'))
+            backdata.db.set(name, data.encode('utf-8'))
 
         return OK, {'name':name}
         
+
+
+class NameHandler (DBAction):
+    def __init__(self, addr):
+        self.addr = addr
+
+    def ping(self, data=''):
+        now = datetime.datetime.now()
+        return 0, {'name':config.SERVER_NAME, 'group':config.GROUP_NAME, 'time':str(now)[:19]}
+
+    def query(self, name):
+        retdata = {}
+        if isinstance(name, list):
+            for nm in name:
+                retdata[nm] = self._get(nm)
+        else:
+            retdata[name] = self._get(name)
+        return OK, retdata
+
+    def report(self, name, server, weight, rtime):
+        now = int(time.time())
+
+        row = {'server':server, 'weight':weight, 'ctime':now, 'rtime':rtime}
+        self._set(name, row)
+        row['name'] = name
+        backsync.push({'method':'report', 'data':row})
+        return OK, {name:row}
+
     def remove(self, name, addr):
         # name, addr
         self._delete(name, addr)
@@ -220,15 +224,38 @@ class NameHandler:
     # for server
     @check_token
     def getall(self):
-        data = self.db.getall()
+        data = backdata.db.getall()
         return OK, data
+
+def load_data():
+    dba = DBAction()
+    for one in config.GROUP_SERVER:
+        if one['name'] == config.SERVER_NAME:
+            continue
+        log.info('load data from:%s', one)
+        s = backsync.SyncOneServer(one)
+        try:
+            s.connect()            
+            ret,data = s.c.getall()
+            if data:
+                dba._set_data(data)
+            log.debug('load data:%s', len(data))
+        except Exception as e:
+            log.info('load data error:%s', e)
+        finally:
+            s.close()
+
 
 
 def main():
-    if config.GROUP_SYNC:
-        backsync.sync_servers()
     if len(sys.argv) > 2:
         config.PORT = int(sys.argv[2])
+    log.info('backdata nodata:%s', backdata.db.nodata)
+    if backdata.db.nodata:
+        load_data()
+
+    if config.GROUP_SYNC:
+        backsync.sync_servers()
     rpc.gevent_server(config.PORT, NameHandler, proto='tcp,udp')
 
 
